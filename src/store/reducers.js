@@ -1,5 +1,6 @@
 import { applyReducerHash } from '@redhat-cloud-services/frontend-components-utilities/files/ReducerRegistry';
 import * as ACTIONS from './actionTypes';
+import { versionMapper } from '../api/constants';
 
 const defaultState = { loaded: false, selectedRows: {}};
 const disabledApis = [
@@ -7,9 +8,10 @@ const disabledApis = [
     'aiops-insights-clustering',
     'openshift',
     'ruledev',
-    'migration-analytics',
     'subscriptions'
 ];
+
+const getAppName = (service) => (service.api.alias && service.api.alias[0]) || service.appName;
 
 function dataLoaded(state, { payload }) {
     return {
@@ -21,8 +23,8 @@ function dataLoaded(state, { payload }) {
         )
         .map(service => ({
             ...service,
-            version: service.api.versions[0],
-            appName: (service.api.alias && service.api.alias[0]) || service.appName,
+            version: versionMapper[getAppName(service)] || service?.api?.versions?.[0],
+            appName: getAppName(service),
             apiName: service.api.apiName
         })),
         loaded: true
@@ -43,19 +45,26 @@ function onSelectRow(state, { payload: { isSelected, row }}) {
         ...state.selectedRows || {},
         ...Array.isArray(row) ? row.reduce((acc, curr) => ({
             ...acc,
-            [curr.cells[0].value]: {
+            [`${row.subItems ? 'parent-' : ''}${curr.cells[0].value}`]: {
                 isSelected,
                 appName: curr.cells[0].value,
-                version: curr.cells[2].value
+                version: curr.cells[2].value,
+                ...curr.subItems && {
+                    subItems: curr.subItems
+                }
             }
         }), {}) : {
-            [row.cells[0].value]: {
+            [`${row.subItems ? 'parent-' : ''}${row.cells[0].value}`]: {
                 isSelected,
                 appName: row.cells[0].value,
-                version: row.cells[2].value
+                version: row.cells[2].value,
+                ...row.subItems && {
+                    subItems: row.subItems
+                }
             }
         }
     };
+
     return {
         ...state,
         selectedRows
